@@ -26,7 +26,7 @@ python manage.py bootstrap_admin
 python manage.py runserver
 ```
 
-Abra `http://127.0.0.1:8000/admin/` e entre com `ADMIN_USERNAME` e `ADMIN_PASSWORD` do `.env`. O Django Admin tem cabeçalho próprio, busca e filtros para as listas, edição rápida de disponibilidade e preço e timestamps de produto somente para leitura. Use **Categorias** e **Produtos** para manter o cardápio. Uma categoria com produtos associados não pode ser removida; remova ou reassocie os produtos primeiro.
+Abra `http://127.0.0.1:8000/` para a página inicial, que oferece links para o painel e a API. Para gerenciar o cardápio, entre em `http://127.0.0.1:8000/admin/` com `ADMIN_USERNAME` e `ADMIN_PASSWORD` do `.env`. O Django Admin tem cabeçalho próprio, busca e filtros para as listas, edição rápida de disponibilidade e preço e timestamps de produto somente para leitura. Use **Categorias** e **Produtos** para manter o cardápio. Uma categoria com produtos associados não pode ser removida; remova ou reassocie os produtos primeiro.
 
 Para criar ou atualizar o administrador novamente, execute `python manage.py bootstrap_admin`. O comando aplica a senha configurada no ambiente ao usuário indicado. Não use credenciais de exemplo em produção.
 

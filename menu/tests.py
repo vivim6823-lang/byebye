@@ -19,6 +19,14 @@ class MenuApiTests(TestCase):
             price="22.90",
         )
 
+    def test_homepage_links_to_admin_and_api(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/admin/"')
+        self.assertContains(response, 'href="/api/categories/"')
+        self.assertContains(response, 'href="/api/products/"')
+
     def test_categories_returns_only_active_categories(self):
         Category.objects.create(name="Inativa", is_active=False)
 
