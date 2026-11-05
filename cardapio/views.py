@@ -2,4 +2,4 @@ from django.shortcuts import render
 
 
 def home(request):
-    return render(request, "menu/home.html")
+    return render(request, "cardapio/home.html")

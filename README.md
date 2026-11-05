@@ -1,6 +1,6 @@
 # Cardápio da lanchonete
 
-Aplicação Django para manter categorias e produtos pelo painel administrativo e disponibilizar o cardápio por uma API REST somente de leitura, criada com Django REST Framework, serializers, viewsets e router. A categoria (`Categoria`) tem nome obrigatório e único (`nome`, até 100 caracteres) e descrição opcional (`descricao`). O produto (`Produto`) tem nome obrigatório (`nome`, até 150 caracteres), descrição opcional (`descricao`), preço não negativo (`preco`), disponibilidade ativada por padrão (`disponivel`) e uma relação protegida `categoria` com `related_name="produtos"`. Os dados ficam em SQLite por padrão.
+Projeto Django com o app `cardapio`, painel administrativo e API REST de categorias e produtos, construída com Django REST Framework. A categoria (`Categoria`) tem nome obrigatório e único (`nome`, até 100 caracteres) e descrição opcional (`descricao`). O produto (`Produto`) tem nome obrigatório (`nome`, até 150 caracteres), descrição opcional (`descricao`), preço não negativo (`preco`), disponibilidade ativada por padrão (`disponivel`) e uma relação protegida `categoria` com `related_name="produtos"`. Os dados ficam em SQLite por padrão.
 
 ## Requisitos
 
@@ -30,46 +30,38 @@ Abra `http://127.0.0.1:8000/` para a página inicial, que oferece links para o p
 
 Para criar ou atualizar o administrador novamente, execute `python manage.py bootstrap_admin`. O comando aplica a senha configurada no ambiente ao usuário indicado. Não use credenciais de exemplo em produção.
 
-## API
+## API REST
 
-A API não exige autenticação e não permite alterações. Os serializers expõem apenas os campos públicos e representam a categoria do produto de forma aninhada. Os viewsets são registrados em um router; use o painel autenticado para cadastrar e atualizar os dados.
+Os endpoints de categorias e produtos oferecem CRUD completo. Leituras são públicas; operações de escrita exigem autenticação por token ou sessão.
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| `GET` | `/api/categories/` | Lista categorias ativas |
-| `GET` | `/api/products/` | Lista produtos de categorias ativas |
-| `GET` | `/api/products/{id}/` | Consulta um produto pelo identificador |
+| `GET`, `POST` | `/api/categorias/` | Lista e cria categorias |
+| `GET`, `PUT`, `PATCH`, `DELETE` | `/api/categorias/{id}/` | Consulta, atualiza e exclui uma categoria |
+| `GET` | `/api/categorias/{id}/produtos/` | Lista os produtos da categoria |
+| `GET`, `POST` | `/api/produtos/` | Lista e cria produtos |
+| `GET`, `PUT`, `PATCH`, `DELETE` | `/api/produtos/{id}/` | Consulta, atualiza e exclui um produto |
+| `POST` | `/api/token/` | Obtém um token usando usuário e senha |
+| `GET` | `/api/schema/` | Esquema OpenAPI |
+| `GET` | `/api/docs/` | Documentação interativa Swagger |
 
-Exemplo de resposta de `/api/products/`:
+Para criar ou atualizar dados, envie `Authorization: Token <token>`. O preço é validado no serializer e não pode ser negativo. A resposta dos produtos inclui `categoria_nome`.
 
-```json
-{
-  "count": 1,
-  "results": [
-    {
-      "id": 1,
-      "name": "X-Burger",
-      "description": "Hambúrguer, queijo e salada.",
-      "price": "22.90",
-      "is_available": true,
-      "category": {
-        "id": 1,
-        "name": "Lanches"
-      }
-    }
-  ]
-}
+Filtros e busca:
+
+- `/api/produtos/?disponivel=true` ou `false` filtra pela disponibilidade.
+- `/api/produtos/?search=burger` busca pelo nome, sem distinção entre maiúsculas e minúsculas.
+- As listagens são paginadas com 50 resultados por página; use `?page=2` para avançar.
+
+Exemplo de solicitação de token:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/token/ `
+  -ContentType "application/json" `
+  -Body '{"username":"admin","password":"sua-senha"}'
 ```
 
-Parâmetros opcionais de `/api/products/`:
-
-- `category_id`: filtra pelo ID de uma categoria ativa.
-- `available`: `true` ou `false`, para filtrar a disponibilidade.
-- `q`: busca sem distinção entre maiúsculas e minúsculas no nome e na descrição.
-- `page`: página solicitada (padrão `1`).
-- `page_size`: resultados por página (padrão `50`, máximo `100`).
-
-A resposta paginada contém `count`, `next`, `previous` e `results`; `next` e `previous` são números de página ou `null`. Parâmetros inválidos retornam HTTP `400`; um produto inexistente ou de categoria inativa retorna `404`. Endpoints que não sejam `GET` retornam `405`.
+Use o valor retornado no cabeçalho `Authorization: Token ...` das solicitações de escrita.
 
 ## Configuração
 

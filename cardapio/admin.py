@@ -9,7 +9,7 @@ admin.site.index_title = "Gerenciamento do cardápio"
 
 
 @admin.register(Categoria)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoriaAdmin(admin.ModelAdmin):
     list_display = ("nome", "is_active")
     list_filter = ("is_active",)
     search_fields = ("nome", "descricao")
@@ -17,7 +17,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Produto)
-class ProductAdmin(admin.ModelAdmin):
+class ProdutoAdmin(admin.ModelAdmin):
     list_display = ("nome", "categoria", "preco", "disponivel", "updated_at")
     list_filter = ("categoria", "disponivel")
     search_fields = ("nome", "descricao", "categoria__nome")
