@@ -2,21 +2,53 @@ from io import StringIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Category, Product
+from .models import Categoria, Produto
+
+
+class MenuModelTests(TestCase):
+    def test_category_name_is_unique_and_description_is_optional(self):
+        category = Categoria.objects.create(nome="Lanches")
+        name_field = Categoria._meta.get_field("nome")
+        self.assertEqual(name_field.max_length, 100)
+        self.assertTrue(name_field.unique)
+        self.assertEqual(category.descricao, "")
+        with self.assertRaises(ValidationError):
+            Categoria(nome="Lanches").validate_unique()
+
+    def test_product_matches_required_schema(self):
+        category = Categoria.objects.create(nome="Lanches")
+        product = Produto.objects.create(categoria=category, nome="X-Burger", preco=0)
+
+        self.assertEqual(Produto._meta.get_field("nome").max_length, 150)
+        price_field = Produto._meta.get_field("preco")
+        self.assertEqual(price_field.max_digits, 8)
+        self.assertEqual(price_field.decimal_places, 2)
+        self.assertEqual(product.disponivel, True)
+        self.assertEqual(product.descricao, "")
+        self.assertEqual(category.produtos.get(), product)
+        self.assertEqual(Produto._meta.get_field("categoria").remote_field.related_name, "produtos")
+
+    def test_product_price_cannot_be_negative(self):
+        category = Categoria.objects.create(nome="Lanches")
+        product = Produto(categoria=category, nome="X-Burger", preco="-0.01")
+
+        with self.assertRaises(ValidationError):
+            product.full_clean()
 
 
 class MenuApiTests(TestCase):
     def setUp(self):
-        self.category = Category.objects.create(name="Lanches")
-        self.product = Product.objects.create(
-            category=self.category,
-            name="X-Burger",
-            description="Hambúrguer com queijo",
-            price="22.90",
+        self.category = Categoria.objects.create(nome="Lanches")
+        self.product = Produto.objects.create(
+            categoria=self.category,
+            nome="X-Burger",
+            descricao="Hambúrguer com queijo",
+            preco="22.90",
         )
 
     def test_homepage_links_to_admin_and_api(self):
@@ -28,7 +60,7 @@ class MenuApiTests(TestCase):
         self.assertContains(response, 'href="/api/products/"')
 
     def test_categories_returns_only_active_categories(self):
-        Category.objects.create(name="Inativa", is_active=False)
+        Categoria.objects.create(nome="Inativa", is_active=False)
 
         response = self.client.get(reverse("api-categories-list"))
 
@@ -62,8 +94,8 @@ class MenuApiTests(TestCase):
         self.assertEqual(response.json()["results"][0]["id"], self.product.id)
 
     def test_products_paginates_results(self):
-        Product.objects.create(
-            category=self.category, name="X-Salada", price="20.00", is_available=False
+        Produto.objects.create(
+            categoria=self.category, nome="X-Salada", preco="20.00", disponivel=False
         )
 
         first_page = self.client.get(
@@ -144,8 +176,8 @@ class AdminPanelTests(TestCase):
         )
         self.client.force_login(user)
 
-        categories_response = self.client.get("/admin/menu/category/")
-        products_response = self.client.get("/admin/menu/product/")
+        categories_response = self.client.get("/admin/menu/categoria/")
+        products_response = self.client.get("/admin/menu/produto/")
 
         self.assertEqual(categories_response.status_code, 200)
         self.assertEqual(products_response.status_code, 200)

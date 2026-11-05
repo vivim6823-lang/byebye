@@ -5,7 +5,7 @@ from rest_framework.exceptions import APIException
 from rest_framework.pagination import BasePagination
 from rest_framework.response import Response
 
-from .models import Category, Product
+from .models import Categoria, Produto
 from .serializers import CategorySerializer, ProductSerializer
 
 
@@ -65,7 +65,7 @@ class MenuPagination(BasePagination):
 
 
 class CategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    queryset = Category.objects.filter(is_active=True)
+    queryset = Categoria.objects.filter(is_active=True)
     serializer_class = CategorySerializer
 
     def list(self, request, *args, **kwargs):
@@ -79,8 +79,8 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = MenuPagination
 
     def get_queryset(self):
-        queryset = Product.objects.select_related("category").filter(
-            category__is_active=True
+        queryset = Produto.objects.select_related("categoria").filter(
+            categoria__is_active=True
         )
         if self.action != "list":
             return queryset
@@ -88,7 +88,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         category_id = self.request.query_params.get("category_id")
         if category_id is not None:
             queryset = queryset.filter(
-                category_id=_positive_int(category_id, "category_id")
+                categoria_id=_positive_int(category_id, "category_id")
             )
 
         available = self.request.query_params.get("available")
@@ -96,12 +96,12 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             normalized = available.strip().lower()
             if normalized not in {"true", "false"}:
                 raise MenuApiError("available deve ser 'true' ou 'false'.")
-            queryset = queryset.filter(is_available=(normalized == "true"))
+            queryset = queryset.filter(disponivel=(normalized == "true"))
 
         search = self.request.query_params.get("q", "").strip()
         if search:
             queryset = queryset.filter(
-                Q(name__icontains=search) | Q(description__icontains=search)
+                Q(nome__icontains=search) | Q(descricao__icontains=search)
             )
 
         return queryset

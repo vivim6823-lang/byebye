@@ -1,6 +1,6 @@
 # Cardápio da lanchonete
 
-Aplicação Django para manter categorias e produtos pelo painel administrativo e disponibilizar o cardápio por uma API REST somente de leitura, criada com Django REST Framework, serializers, viewsets e router. Os dados ficam em SQLite por padrão.
+Aplicação Django para manter categorias e produtos pelo painel administrativo e disponibilizar o cardápio por uma API REST somente de leitura, criada com Django REST Framework, serializers, viewsets e router. A categoria (`Categoria`) tem nome obrigatório e único (`nome`, até 100 caracteres) e descrição opcional (`descricao`). O produto (`Produto`) tem nome obrigatório (`nome`, até 150 caracteres), descrição opcional (`descricao`), preço não negativo (`preco`), disponibilidade ativada por padrão (`disponivel`) e uma relação protegida `categoria` com `related_name="produtos"`. Os dados ficam em SQLite por padrão.
 
 ## Requisitos
 
