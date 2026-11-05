@@ -1,9 +1,9 @@
-from django.urls import path
+from rest_framework.routers import SimpleRouter
 
-from . import api_views
+from .api_views import CategoryViewSet, ProductViewSet
 
-urlpatterns = [
-    path("categories/", api_views.categories, name="api-categories"),
-    path("products/", api_views.products, name="api-products"),
-    path("products/<int:product_id>/", api_views.product_detail, name="api-product-detail"),
-]
+router = SimpleRouter()
+router.register("categories", CategoryViewSet, basename="api-categories")
+router.register("products", ProductViewSet, basename="api-products")
+
+urlpatterns = router.urls

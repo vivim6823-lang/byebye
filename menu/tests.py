@@ -22,7 +22,7 @@ class MenuApiTests(TestCase):
     def test_categories_returns_only_active_categories(self):
         Category.objects.create(name="Inativa", is_active=False)
 
-        response = self.client.get(reverse("api-categories"))
+        response = self.client.get(reverse("api-categories-list"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {
@@ -31,7 +31,7 @@ class MenuApiTests(TestCase):
         })
 
     def test_products_returns_price_as_decimal_string(self):
-        response = self.client.get(reverse("api-products"))
+        response = self.client.get(reverse("api-products-list"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["results"], [{
@@ -45,7 +45,7 @@ class MenuApiTests(TestCase):
 
     def test_products_supports_filters(self):
         response = self.client.get(
-            reverse("api-products"),
+            reverse("api-products-list"),
             {"category_id": self.category.id, "available": "true", "q": "burger"},
         )
 
@@ -59,10 +59,10 @@ class MenuApiTests(TestCase):
         )
 
         first_page = self.client.get(
-            reverse("api-products"), {"page_size": "1", "page": "1"}
+            reverse("api-products-list"), {"page_size": "1", "page": "1"}
         ).json()
         second_page = self.client.get(
-            reverse("api-products"), {"page_size": "1", "page": "2"}
+            reverse("api-products-list"), {"page_size": "1", "page": "2"}
         ).json()
 
         self.assertEqual(first_page["count"], 2)
@@ -72,7 +72,9 @@ class MenuApiTests(TestCase):
         self.assertIsNone(second_page["next"])
 
     def test_invalid_filter_returns_bad_request(self):
-        response = self.client.get(reverse("api-products"), {"available": "maybe"})
+        response = self.client.get(
+            reverse("api-products-list"), {"available": "maybe"}
+        )
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json())
@@ -82,15 +84,25 @@ class MenuApiTests(TestCase):
         self.category.save()
 
         response = self.client.get(
-            reverse("api-product-detail", args=[self.product.id])
+            reverse("api-products-detail", args=[self.product.id])
         )
 
         self.assertEqual(response.status_code, 404)
 
     def test_api_rejects_non_get_methods(self):
-        response = self.client.post(reverse("api-products"))
+        response = self.client.post(reverse("api-products-list"))
 
         self.assertEqual(response.status_code, 405)
+
+    def test_invalid_page_size_returns_bad_request(self):
+        response = self.client.get(
+            reverse("api-products-list"), {"page_size": "101"}
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(), {"error": "page_size não pode ser maior que 100."}
+        )
 
 
 class AdminPanelTests(TestCase):

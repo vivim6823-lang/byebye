@@ -1,111 +1,107 @@
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Q
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_GET
+from rest_framework import mixins, status, viewsets
+from rest_framework.exceptions import APIException
+from rest_framework.pagination import BasePagination
+from rest_framework.response import Response
 
 from .models import Category, Product
+from .serializers import CategorySerializer, ProductSerializer
 
 
-def _category_data(category):
-    return {"id": category.id, "name": category.name}
-
-
-def _product_data(product):
-    return {
-        "id": product.id,
-        "name": product.name,
-        "description": product.description,
-        "price": format(product.price, ".2f"),
-        "is_available": product.is_available,
-        "category": _category_data(product.category),
-    }
+class MenuApiError(APIException):
+    def __init__(self, message, status_code=status.HTTP_400_BAD_REQUEST):
+        self.status_code = status_code
+        super().__init__({"error": message})
 
 
 def _positive_int(value, name):
     try:
         number = int(value)
     except (TypeError, ValueError):
-        raise ValueError(f"{name} deve ser um número inteiro positivo.")
+        raise MenuApiError(f"{name} deve ser um número inteiro positivo.")
     if number < 1:
-        raise ValueError(f"{name} deve ser um número inteiro positivo.")
+        raise MenuApiError(f"{name} deve ser um número inteiro positivo.")
     return number
 
 
-@require_GET
-def categories(request):
-    results = [
-        _category_data(category)
-        for category in Category.objects.filter(is_active=True)
-    ]
-    return JsonResponse({"count": len(results), "results": results})
+class MenuPagination(BasePagination):
+    page_size = 50
+    max_page_size = 100
 
+    def paginate_queryset(self, queryset, request, view=None):
+        page_number = _positive_int(request.query_params.get("page", "1"), "page")
+        page_size = _positive_int(
+            request.query_params.get("page_size", str(self.page_size)), "page_size"
+        )
+        if page_size > self.max_page_size:
+            raise MenuApiError("page_size não pode ser maior que 100.")
 
-@require_GET
-def products(request):
-    queryset = Product.objects.select_related("category").filter(
-        category__is_active=True
-    )
-    category_id = request.GET.get("category_id")
-    if category_id is not None:
+        paginator = Paginator(queryset, page_size)
         try:
+            self.page = paginator.page(page_number)
+        except EmptyPage:
+            raise MenuApiError(
+                "A página solicitada não existe.", status.HTTP_404_NOT_FOUND
+            )
+
+        return list(self.page)
+
+    def get_paginated_response(self, data):
+        return Response(
+            {
+                "count": self.page.paginator.count,
+                "next": (
+                    self.page.next_page_number() if self.page.has_next() else None
+                ),
+                "previous": (
+                    self.page.previous_page_number()
+                    if self.page.has_previous()
+                    else None
+                ),
+                "results": data,
+            }
+        )
+
+
+class CategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    queryset = Category.objects.filter(is_active=True)
+    serializer_class = CategorySerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"count": len(serializer.data), "results": serializer.data})
+
+
+class ProductViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ProductSerializer
+    pagination_class = MenuPagination
+
+    def get_queryset(self):
+        queryset = Product.objects.select_related("category").filter(
+            category__is_active=True
+        )
+        if self.action != "list":
+            return queryset
+
+        category_id = self.request.query_params.get("category_id")
+        if category_id is not None:
             queryset = queryset.filter(
                 category_id=_positive_int(category_id, "category_id")
             )
-        except ValueError as exc:
-            return JsonResponse({"error": str(exc)}, status=400)
 
-    available = request.GET.get("available")
-    if available is not None:
-        normalized = available.strip().lower()
-        if normalized not in {"true", "false"}:
-            return JsonResponse(
-                {"error": "available deve ser 'true' ou 'false'."}, status=400
+        available = self.request.query_params.get("available")
+        if available is not None:
+            normalized = available.strip().lower()
+            if normalized not in {"true", "false"}:
+                raise MenuApiError("available deve ser 'true' ou 'false'.")
+            queryset = queryset.filter(is_available=(normalized == "true"))
+
+        search = self.request.query_params.get("q", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
             )
-        queryset = queryset.filter(is_available=(normalized == "true"))
 
-    search = request.GET.get("q", "").strip()
-    if search:
-        queryset = queryset.filter(
-            Q(name__icontains=search) | Q(description__icontains=search)
-        )
-
-    try:
-        page_number = _positive_int(request.GET.get("page", "1"), "page")
-        page_size = _positive_int(request.GET.get("page_size", "50"), "page_size")
-    except ValueError as exc:
-        return JsonResponse({"error": str(exc)}, status=400)
-
-    if page_size > 100:
-        return JsonResponse(
-            {"error": "page_size não pode ser maior que 100."}, status=400
-        )
-
-    page = Paginator(queryset, page_size)
-    try:
-        page_results = page.page(page_number)
-    except (EmptyPage, PageNotAnInteger):
-        return JsonResponse({"error": "A página solicitada não existe."}, status=404)
-
-    return JsonResponse(
-        {
-            "count": page.count,
-            "next": page_results.next_page_number() if page_results.has_next() else None,
-            "previous": (
-                page_results.previous_page_number()
-                if page_results.has_previous()
-                else None
-            ),
-            "results": [_product_data(product) for product in page_results],
-        }
-    )
-
-
-@require_GET
-def product_detail(request, product_id):
-    product = get_object_or_404(
-        Product.objects.select_related("category"),
-        pk=product_id,
-        category__is_active=True,
-    )
-    return JsonResponse(_product_data(product))
+        return queryset
