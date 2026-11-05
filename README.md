@@ -1,6 +1,6 @@
 # Cardápio da lanchonete
 
-Aplicação Django para manter categorias e produtos pelo painel administrativo e disponibilizar o cardápio por uma API JSON somente de leitura. Os dados ficam em SQLite por padrão.
+Aplicação Django para manter categorias e produtos pelo painel administrativo e disponibilizar o cardápio por uma API REST somente de leitura, criada com Django REST Framework, serializers, viewsets e router. Os dados ficam em SQLite por padrão.
 
 ## Requisitos
 
@@ -26,13 +26,13 @@ python manage.py bootstrap_admin
 python manage.py runserver
 ```
 
-Abra `http://127.0.0.1:8000/admin/` e entre com `ADMIN_USERNAME` e `ADMIN_PASSWORD` do `.env`. No Django Admin, use **Categorias** e **Produtos** para manter o cardápio. Uma categoria com produtos associados não pode ser removida; remova ou reassocie os produtos primeiro.
+Abra `http://127.0.0.1:8000/admin/` e entre com `ADMIN_USERNAME` e `ADMIN_PASSWORD` do `.env`. O Django Admin tem cabeçalho próprio, busca e filtros para as listas, edição rápida de disponibilidade e preço e timestamps de produto somente para leitura. Use **Categorias** e **Produtos** para manter o cardápio. Uma categoria com produtos associados não pode ser removida; remova ou reassocie os produtos primeiro.
 
 Para criar ou atualizar o administrador novamente, execute `python manage.py bootstrap_admin`. O comando aplica a senha configurada no ambiente ao usuário indicado. Não use credenciais de exemplo em produção.
 
 ## API
 
-A API não exige autenticação e não permite alterações. Use o painel autenticado para cadastrar e atualizar os dados.
+A API não exige autenticação e não permite alterações. Os serializers expõem apenas os campos públicos e representam a categoria do produto de forma aninhada. Os viewsets são registrados em um router; use o painel autenticado para cadastrar e atualizar os dados.
 
 | Método | Endpoint | Descrição |
 |---|---|---|
